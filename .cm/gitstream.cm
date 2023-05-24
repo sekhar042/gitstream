@@ -50,6 +50,27 @@ changes:
   additions: {{ branch.diff.files_metadata | map(attr='additions') | sum }}
   # Sum all the line removed in the PR
   deletions: {{ branch.diff.files_metadata | map(attr='deletions') | sum }}
+    
+    review_sensitive_files:
+    # For all files listed in the sensitive custom expression.
+    if:
+      - {{ files | match(list=sensitive_files) | some }}
+    run:
+      - action: add-reviewers@v1
+        args:
+          reviewers: [Sekhar9581]
+      - action: set-required-approvals@v1
+        args:
+          approvals: 1
+      - action: add-comment@v1
+        args:
+          comment: |
+            This PR affects one or more sensitive files and requires review from the security team.
+
+# The `sensitive_file_review` automation requires this custom expression.
+# Modify this list to suit your security needs.
+sensitive_files:
+  - .github/workflows/
 
 is:
   one_file: {{ files | length == 1 }}

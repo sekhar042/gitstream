@@ -1,32 +1,58 @@
-# -*- mode: yaml -*-
-# This example configuration for provides basic automations to get started with gitStream.
-# View the gitStream quickstart for more examples: https://docs.gitstream.cm/quick-start/
+
 manifest:
   version: 1.0
 automations:
-  # Add a label that indicates how many minutes it will take to review the PR.
   estimated_time_to_review: 
     if:
       - true
     run:
       - action: add-label@v1
-      # etr is defined in the last section of this example
         args:
           label: "{{ calc.etr }} min review"
           color: {{ 'E94637' if (calc.etr >= 20) else ('FBBD10' if (calc.etr >= 5) else '36A853') }}
-  # Post a comment that lists the best experts for the files that were modified.
   suggest_code_experts:
-    # Triggered when someone applies a suggest-reviewer label to a PR.
     if: 
       - {{ pr.labels | match(term='suggest-reviewer') }}
-    # Identify the best experts to assign for review and post a comment that explains why
-    # More info about code experts
-    # https://docs.gitstream.cm/filter-functions/#codeexperts
     run:
       - action: add-comment@v1
         args:
           comment: |
             {{ repo | explainCodeExperts(gt=10) }}
-# The next function calculates the estimated time to review and makes it available in the automation above.
+  assign_code_experts:
+    # Triggered when someone applies a suggest-reviewer label to a PR.
+    if: 
+      - {{ pr.labels | match(term='suggest-reviewer') }}
+    # Identify the best experts to assign for review and post a comment that explains why
+    run:
+      - action: add-reviewers@v1
+        args:
+          reviewers: {{ repo | codeExperts(gt=10) }}
+      - action: add-comment@v1
+        args:
+          comment: |
+            {{ repo | explainCodeExperts(gt=10) }}
+  approve_tiny_change:
+    # Triggered for PRs that contain one file and one line.
+    if:
+      - {{ is.one_file and is.one_line }}
+    run:
+      - action: add-label@v1
+        args:
+          label: 'single-line'
+      - action: approve@v1
+      - action: add-comment@v1
+        args:
+          comment: |
+            This PR has been approved because it is only a single line
+
+changes:
+  # Sum all the lines added in the PR
+  additions: {{ branch.diff.files_metadata | map(attr='additions') | sum }}
+  # Sum all the line removed in the PR
+  deletions: {{ branch.diff.files_metadata | map(attr='deletions') | sum }}
+
+is:
+  one_file: {{ files | length == 1 }}
+  one_line: {{ changes.additions - changes.deletions <= 1 }}
 calc:
   etr: {{ branch | estimatedReviewTime }}

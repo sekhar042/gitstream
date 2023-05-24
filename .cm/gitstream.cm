@@ -18,13 +18,18 @@ automations:
         args:
           comment: |
             {{ repo | explainCodeExperts(gt=10) }}
-  review_files:
+  assign_code_experts:
+    # Triggered when someone applies a suggest-reviewer label to a PR.
+    if: 
+      - {{ pr.labels | match(term='suggest-reviewer') }}
+    # Identify the best experts to assign for review and post a comment that explains why
     run:
       - action: add-reviewers@v1
         args:
-          reviewers:
-            - urstrulymithilesh
-            - Sekhar9581
-          required: 1
+          reviewers: {{ repo | codeExperts(gt=10) }}
+      - action: add-comment@v1
+        args:
+          comment: |
+            {{ repo | explainCodeExperts(gt=10) }}
 calc:
   etr: {{ branch | estimatedReviewTime }}

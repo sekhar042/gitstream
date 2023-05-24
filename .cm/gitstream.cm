@@ -31,18 +31,28 @@ automations:
         args:
           comment: |
             {{ repo | explainCodeExperts(gt=10) }}
-    review_sensitive_files:
-    # For all files listed in the sensitive custom expression.
+  approve_tiny_change:
+    # Triggered for PRs that contain one file and one line.
     if:
-      - {{ files | match(list=sensitive_files) | some }}
+      - {{ is.one_file and is.one_line }}
     run:
+      - action: add-label@v1
+        args:
+          label: 'single-line'
+      - action: approve@v1
       - action: add-comment@v1
         args:
           comment: |
-            This PR affects one or more sensitive files and requires review from the security team.
+            This PR has been approved because it is only a single line
 
-sensitive_files:
-  - .github/workflows/
-  - .cm/
+changes:
+  # Sum all the lines added in the PR
+  additions: {{ branch.diff.files_metadata | map(attr='additions') | sum }}
+  # Sum all the line removed in the PR
+  deletions: {{ branch.diff.files_metadata | map(attr='deletions') | sum }}
+
+is:
+  one_file: {{ files | length == 1 }}
+  one_line: {{ changes.additions - changes.deletions <= 1 }}
 calc:
   etr: {{ branch | estimatedReviewTime }}

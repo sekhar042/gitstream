@@ -1,2 +1,3 @@
 # gitstream
 /:\gitstream/:\
+ /:\stream/:\
